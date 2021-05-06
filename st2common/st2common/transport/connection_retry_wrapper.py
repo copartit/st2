@@ -31,9 +31,9 @@ class ClusterRetryContext(object):
         # No of nodes in a cluster
         self.cluster_size = cluster_size
         # No of times to retry in a cluster
-        self.cluster_retry = 2
+        self.cluster_retry = 5
         # time to wait between retry in a cluster
-        self.wait_between_cluster = 10
+        self.wait_between_cluster = 2
 
         # No of nodes attempted. Starts at 1 since the
         self._nodes_attempted = 1
@@ -141,7 +141,7 @@ class ConnectionRetryWrapper(object):
                     raise
 
                 # -1, 0 and 1+ are handled properly by eventlet.sleep
-                self._logger.debug('Received RabbitMQ server error, sleeping for %s seconds '
+                self._logger.info('Received RabbitMQ server error, sleeping for %s seconds '
                                    'before retrying: %s' % (wait, six.text_type(e)))
                 concurrency.sleep(wait)
 
