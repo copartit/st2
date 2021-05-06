@@ -15,6 +15,7 @@
 
 from __future__ import absolute_import
 
+import datetime
 import eventlet
 import retrying
 from oslo_config import cfg
@@ -78,10 +79,19 @@ class ActionExecutionSchedulingQueueHandler(object):
         wait_fixed=cfg.CONF.scheduler.retry_wait_msec,
     )
     def process(self):
+        before = datetime.datetime.now()
+
         execution_queue_item_db = self._get_next_execution()
 
         if execution_queue_item_db:
             self._pool.spawn(self._handle_execution, execution_queue_item_db)
+
+        after = datetime.datetime.now()
+        LOG.info(
+            "handler.py process() took {} seconds".format(
+                (after - before).total_seconds()
+            )
+        )
 
     def cleanup(self):
         LOG.debug("Starting scheduler garbage collection...")
@@ -227,7 +237,9 @@ class ActionExecutionSchedulingQueueHandler(object):
             "order_by": ["+scheduled_start_timestamp", "+original_start_timestamp"],
         }
 
+        before = datetime.datetime.now()
         execution_queue_item_db = ActionExecutionSchedulingQueue.query(**query).first()
+        after = datetime.datetime.now()
 
         if not execution_queue_item_db:
             return None
@@ -238,6 +250,10 @@ class ActionExecutionSchedulingQueueHandler(object):
         LOG.info(
             msg, execution_queue_item_db.action_execution_id, execution_queue_item_db.id
         )
+        LOG.info(
+            "Retreiving item took {} seconds".format((after - before).total_seconds())
+        )
+
         execution_queue_item_db.handling = True
 
         try:

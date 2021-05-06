@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from __future__ import absolute_import
+import datetime
 import six
 
 from st2common import log as logging
@@ -190,9 +191,30 @@ def publish_request(liveaction, execution):
     :rtype: tuple
     """
     # Assume that this is a creation.
+    before = datetime.datetime.now()
     LiveAction.publish_create(liveaction)
+    after = datetime.datetime.now()
+    LOG.info(
+        "LiveAction.publish_create took {} seconds".format(
+            (after - before).total_seconds()
+        )
+    )
+    before = datetime.datetime.now()
     LiveAction.publish_status(liveaction)
+    after = datetime.datetime.now()
+    LOG.info(
+        "LiveAction.publish_status took {} seconds".format(
+            (after - before).total_seconds()
+        )
+    )
+    before = datetime.datetime.now()
     ActionExecution.publish_create(execution)
+    after = datetime.datetime.now()
+    LOG.info(
+        "ActionExecution.publish_create took {} seconds".format(
+            (after - before).total_seconds()
+        )
+    )
 
     # TODO: This results in two queries, optimize it
     #  extra = {'liveaction_db': liveaction, 'execution_db': execution}

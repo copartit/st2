@@ -60,8 +60,14 @@ class SchedulerEntrypoint(consumers.MessageHandler):
             )
             return
 
+        LOG.info(
+            "Received a new LiveAction request from RabbitMQ: {}".format(
+                str(request.id)
+            )
+        )
         try:
             liveaction_db = action_utils.get_liveaction_by_id(str(request.id))
+            LOG.info("Retrieved LiveAction from MongoDB: {}".format(str(request.id)))
         except StackStormDBObjectNotFoundError:
             LOG.exception(
                 "Failed to find liveaction %s in the database.", str(request.id)
@@ -72,23 +78,54 @@ class SchedulerEntrypoint(consumers.MessageHandler):
             "liveaction_id": str(liveaction_db.id),
         }
 
+        LOG.info(
+            "Checking the ActionExecutionSchedulingQueue to see if the action exists: {}".format(
+                str(liveaction_db.id)
+            )
+        )
         queued_requests = ActionExecutionSchedulingQueue.query(**query)
+        LOG.info(
+            "Retrieved {} actions from the ActionExecutionSchedulingQueue for id: {}".format(
+                len(queued_requests), str(liveaction_db.id)
+            )
+        )
 
         if len(queued_requests) > 0:
             # Particular execution is already being scheduled
             return queued_requests[0]
 
         if liveaction_db.delay and liveaction_db.delay > 0:
+            LOG.info("Delaying action with id: {}".format(str(liveaction_db.id)))
             liveaction_db = action_service.update_status(
                 liveaction_db, action_constants.LIVEACTION_STATUS_DELAYED, publish=False
             )
 
+        LOG.info(
+            "Creating execution queue item for liveaction with id: {}".format(
+                str(liveaction_db.id)
+            )
+        )
         execution_queue_item_db = self._create_execution_queue_item_db_from_liveaction(
             liveaction_db, delay=liveaction_db.delay
         )
+        LOG.info(
+            "Finished creating execution queue item for liveaction with id: {}".format(
+                str(liveaction_db.id)
+            )
+        )
 
+        LOG.info(
+            "Adding execution queue item to queue with  id: {}".format(
+                str(liveaction_db.id)
+            )
+        )
         ActionExecutionSchedulingQueue.add_or_update(
             execution_queue_item_db, publish=False
+        )
+        LOG.info(
+            "Finished adding execution queue item to queue with  id: {}".format(
+                str(liveaction_db.id)
+            )
         )
 
         return execution_queue_item_db
